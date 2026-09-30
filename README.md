@@ -24,7 +24,7 @@ SELECT cohens_d_2samp(array_agg(a ORDER BY id), array_agg(b ORDER BY id)) FROM t
 | **stats_fill.sql** (this repo, 64 macros) | statcpp's genuinely unique inferential layer: CIs, effect sizes, power/sample-size, exact Fisher, Kruskal-Wallis, one/two-way ANOVA, Tukey/Scheffé/Dunnett post-hoc, 2×2 categorical (OR/RR/NNT), weighted stats, Gini/HHI, ACF, erf/erfc | this repo |
 | **duckdb-ml** (optional, a 34-algorithm Rust extension) | the "heavy" statcpp modules: GLM/logistic training, clustering (kmeans/DBSCAN/hierarchical/FCM/t-SNE), survival (KM/Cox), ARIMA, ridge/lasso/elastic, PCA/LDA, SVM/XGBoost/RF/MLP/KNN/NB | `LOAD` on demand |
 
-Coverage matrix per statcpp module: [`docs/statcpp_vs_duckdb.csv`](docs/statcpp_vs_duckdb.csv)
+Coverage matrix per statcpp module: [`docs/COVERAGE.md`](docs/COVERAGE.md) (raw CSV: [`statcpp_vs_duckdb.csv`](docs/statcpp_vs_duckdb.csv))
 (30 modules, each verified on a real DuckDB build). **Verdict**: statcpp's 386 functions =
 distribution families (→ stats_duck) + tests (→ stats_duck) + ML/clustering/survival (→
 duckdb-ml) + inferential layer (→ stats_fill.sql). Every function has a home. The only
@@ -93,8 +93,9 @@ stats_fill.sql             64 statistics macros (A descriptive, B CIs, C power, 
                            E ANOVA/post-hoc, F effect sizes, G categorical, H time series,
                            I special functions, J weighted + concentration)
 duckdb_stats_setup.py      stats_connect() one-line bootstrap
-docs/FUNCTION_REFERENCE.md 64 macro signatures
-docs/statcpp_vs_duckdb.csv 30-module coverage matrix
+docs/FUNCTION_REFERENCE.md 64 macro signatures (with return fields + examples)
+docs/COVERAGE.md           30-module coverage matrix (rendered table)
+docs/statcpp_vs_duckdb.csv raw coverage data (machine-readable)
 tests/                     scipy verification (gen_refs + verify_fill + refs.json)
 ```
 

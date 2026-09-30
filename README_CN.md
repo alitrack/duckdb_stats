@@ -23,7 +23,7 @@ SELECT cohens_d_2samp(array_agg(a ORDER BY id), array_agg(b ORDER BY id)) FROM t
 | **stats_fill.sql**（本仓库, 64 宏） | statcpp 真正"独有"的推断层：置信区间、效应量、功效/样本量、Fisher 精确、Kruskal-Wallis、单/双因素 ANOVA、Tukey/Scheffé/Dunnett 事后、2×2 分类（OR/RR/NNT）、加权统计、Gini/HHI、ACF、erf/erfc | 本仓库 |
 | **duckdb-ml**（可选, 34 算法的 Rust 扩展） | statcpp 里"重"的部分：GLM/Logistic 训练、聚类（kmeans/DBSCAN/层次/FCM/t-SNE）、生存分析（KM/Cox）、ARIMA、ridge/lasso/elastic、PCA/LDA、SVM/XGBoost/RF/MLP/KNN/NB | 按需 `LOAD` |
 
-逐模块覆盖矩阵见 [`docs/statcpp_vs_duckdb.csv`](docs/statcpp_vs_duckdb.csv)（30 个模块，
+逐模块覆盖矩阵见 [`docs/COVERAGE.md`](docs/COVERAGE.md)（原始 CSV：[`statcpp_vs_duckdb.csv`](docs/statcpp_vs_duckdb.csv)）（30 个模块，
 每项都在真实 DuckDB 上实测）。**结论**：statcpp 386 函数 = 分布族(→stats_duck) + 检验(→stats_duck)
 + ML/聚类/生存(→duckdb-ml) + 推断层(→stats_fill.sql)，每个函数都有落点。唯一 `[APPROX]`
 是 Tukey/Dunnett 的 p 值（DuckDB 无 studentized-range CDF，z 近似，小样本偏松）。
@@ -85,8 +85,9 @@ uv venv .venv && uv pip install -p .venv duckdb scipy numpy
 stats_fill.sql           64 个统计宏 (A 描述 B 置信区间 C 功效 D 检验 E ANOVA/事后
                          F 效应量 G 分类 H 时间序列 I 特殊函数 J 加权/集中度)
 duckdb_stats_setup.py    stats_connect() 一键启动器
-docs/FUNCTION_REFERENCE.md   64 宏签名参考
-docs/statcpp_vs_duckdb.csv   30 模块覆盖矩阵
+docs/FUNCTION_REFERENCE.md   64 宏签名参考（含返回字段 + 说明）
+docs/COVERAGE.md             30 模块覆盖矩阵（渲染表格）
+docs/statcpp_vs_duckdb.csv   覆盖矩阵原始数据（机器可读）
 tests/                     scipy 验证 (gen_refs + verify_fill + refs.json)
 ```
 
