@@ -11,17 +11,26 @@
   1. 确保 stats_duck 社区扩展已装入【默认】DuckDB home (~/.duckdb, 不设 DUCKDB_HOME)
   2. LOAD stats_duck
   3. 执行本仓库的 stats_fill.sql (64 个统计宏)
+  4. (可选) 加载 duckdb-ml Rust 扩展 (ml_extension=<path>) — GLM/聚类/生存/ARIMA 等
 """
 import os
+import re
 import duckdb
 
 # stats_fill.sql 与本文件同目录 (仓库根)
 FILL_SQL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stats_fill.sql")
 
 
-def stats_connect(config=None):
+def stats_connect(config=None, ml_extension=None):
+    """返回已装载全部统计层的连接.
+
+    ml_extension: 可选, duckdb-ml 的 .duckdb_extension 绝对路径; 传入则
+        以 unsigned 模式 LOAD (提供 GLM 训练/聚类/生存 KM-Cox/ARIMA/PCA-LDA 等)。
+    """
     # 不设置 DUCKDB_HOME -> 用真实默认 home ~/.duckdb
     cfg = {'allow_community_extensions': 'true'}
+    if ml_extension:
+        cfg['allow_unsigned_extensions'] = 'true'
     if config:
         cfg.update(config)
     con = duckdb.connect(config=cfg)
@@ -36,11 +45,12 @@ def stats_connect(config=None):
     con.execute("LOAD stats_duck")
     with open(FILL_SQL, encoding="utf-8") as f:
         sql = f.read()
-    import re
     body = re.sub(r"--[^\n]*", "", sql)
     for stmt in re.split(r"(?=CREATE OR REPLACE MACRO)", body):
         if stmt.strip():
             con.execute(stmt)
+    if ml_extension:
+        con.execute(f"LOAD '{ml_extension}'")
     return con
 
 

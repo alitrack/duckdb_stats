@@ -17,18 +17,19 @@ con.execute('LOAD stats_duck')
 
 sql = open(os.path.join(REPO, 'stats_fill.sql'), encoding='utf-8').read()
 # split at each 'CREATE OR REPLACE MACRO' boundary
-parts = re.split(r'(?=^CREATE OR REPLACE MACRO)', sql, flags=re.M)
+parts = [s for s in re.split(r'(?=^CREATE OR REPLACE MACRO)', sql, flags=re.M) if s.strip().startswith('CREATE OR REPLACE MACRO')]
 ok = fail = 0
 for s in parts:
     s = s.strip()
-    if not s: continue
     try:
         con.execute(s)
         ok += 1
     except Exception as e:
         fail += 1
         print(f"FAIL: {s.splitlines()[0][:60]}\n    :: {str(e).splitlines()[0][:110]}")
-print(f"=== macro creation: {ok} ok, {fail} fail ===\n")
+n_macros = len(re.findall(r'^CREATE OR REPLACE MACRO', sql, flags=re.M))
+assert ok == n_macros, f"loaded {ok} != {n_macros} declared macros"
+print(f"=== macro creation: {ok}/{n_macros} ok, {fail} fail ===\n")
 
 data = json.load(open(os.path.join(HERE, 'refs.json')))
 x1 = np.array(data['data']['x1']); x2 = np.array(data['data']['x2'])
