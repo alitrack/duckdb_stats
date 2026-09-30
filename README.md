@@ -1,96 +1,112 @@
-# duckdb-stats — DuckDB 统计分析层（插件 + SQL 宏）
+# duckdb-stats — Statistical analysis layer for DuckDB (extensions + SQL macros)
 
-在 DuckDB 里获得 **R/SciPy 级别的统计分析能力**：两个社区扩展 + 一套 **64 个 SQL 宏**，
-覆盖 [statcpp](https://github.com/mitsuruk/statcpp)（386 个 C++ 统计函数）的全部功能模块。
+**[中文说明 → README_CN.md](README_CN.md)**
+
+Get **R/SciPy-level statistics inside DuckDB**: two plug-ins + **64 SQL macros** that
+together cover every functional module of
+[statcpp](https://github.com/mitsuruk/statcpp) (386 C++ statistics functions).
 
 ```sql
--- 一个连接里:
+-- one connection:
 INSTALL stats_duck FROM community;  LOAD stats_duck;
--- + 执行 stats_fill.sql
-SELECT ci_mean(array_agg(x)) FROM t;                 -- 置信区间
+-- + run stats_fill.sql
+SELECT ci_mean(array_agg(x)) FROM t;          -- confidence interval
 SELECT * FROM oneway_anova((SELECT array_agg(x ORDER BY id) FROM t),
-                           (SELECT array_agg(grp ORDER BY id) FROM t));  -- 单因素 ANOVA
-SELECT cohens_d_2samp(array_agg(a ORDER BY id), array_agg(b ORDER BY id)) FROM t; -- 效应量
+                           (SELECT array_agg(grp ORDER BY id) FROM t));   -- one-way ANOVA
+SELECT cohens_d_2samp(array_agg(a ORDER BY id), array_agg(b ORDER BY id)) FROM t;  -- effect size
 ```
 
-## 三层能力（为什么"完成 statcpp 的所有功能"）
+## Three capability layers (why this "completes statcpp")
 
-| 层 | 提供什么 | 来源 |
+| Layer | What it provides | Source |
 |---|---|---|
-| **stats_duck**（社区插件, KoliStat） | 15+ 分布族的 d/p/q/r、t 检验族、ANOVA、卡方、非参数检验（Mann-Whitney/Wilcoxon/KS/Shapiro）、Pearson/Spearman/Kendall、`lm` 回归（HC/cluster 稳健 SE）、bootstrap、`adjust_p`（Bonferroni/Holm/Hochberg/FDR/BY）、相关性矩阵、SAS/SPSS/Stata 读写 | 本仓库自动 `INSTALL` |
-| **stats_fill.sql**（本仓库, 64 宏） | statcpp 真正"独有"的推断层：置信区间、效应量、功效/样本量、Fisher 精确、Kruskal-Wallis、单/双因素 ANOVA、Tukey/Scheffé/Dunnett 事后、2×2 分类（OR/RR/NNT）、加权统计、Gini/HHI、ACF、erf/erfc | 本仓库 |
-| **duckdb-ml**（可选, 你自有的 34 算法 Rust 扩展） | statcpp 里"重"的部分：GLM/Logistic 训练、聚类（kmeans/DBSCAN/层次/FCM/t-SNE）、生存分析（KM/Cox）、ARIMA、ridge/lasso/elastic、PCA/LDA、SVM/XGBoost/RF/MLP/KNN/NB | 按需 `LOAD` |
+| **stats_duck** (community extension, KoliStat) | d/p/q/r for 15+ distribution families, t-test family, ANOVA, chi-square, non-parametric tests (Mann-Whitney/Wilcoxon/KS/Shapiro), Pearson/Spearman/Kendall, `lm` regression (HC/cluster-robust SEs), bootstrap, `adjust_p` (Bonferroni/Holm/Hochberg/FDR/BY), correlation matrix, SAS/SPSS/Stata readers | auto `INSTALL`ed by this repo |
+| **stats_fill.sql** (this repo, 64 macros) | statcpp's genuinely unique inferential layer: CIs, effect sizes, power/sample-size, exact Fisher, Kruskal-Wallis, one/two-way ANOVA, Tukey/Scheffé/Dunnett post-hoc, 2×2 categorical (OR/RR/NNT), weighted stats, Gini/HHI, ACF, erf/erfc | this repo |
+| **duckdb-ml** (optional, a 34-algorithm Rust extension) | the "heavy" statcpp modules: GLM/logistic training, clustering (kmeans/DBSCAN/hierarchical/FCM/t-SNE), survival (KM/Cox), ARIMA, ridge/lasso/elastic, PCA/LDA, SVM/XGBoost/RF/MLP/KNN/NB | `LOAD` on demand |
 
-覆盖对照矩阵见 [`docs/statcpp_vs_duckdb.csv`](docs/statcpp_vs_duckdb.csv)（30 个模块逐项判定）。
-**结论**：statcpp 386 函数 = 分布族(→stats_duck) + 检验(→stats_duck) + ML/聚类/生存(→duckdb-ml) +
-推断层(→stats_fill.sql)。全部功能有落点；唯一 [APPROX] 是 Tukey/Dunnett 的 p 值
-（DuckDB 无 studentized-range CDF，用 z 近似，小样本偏松）。
+Coverage matrix per statcpp module: [`docs/statcpp_vs_duckdb.csv`](docs/statcpp_vs_duckdb.csv)
+(30 modules, each verified on a real DuckDB build). **Verdict**: statcpp's 386 functions =
+distribution families (→ stats_duck) + tests (→ stats_duck) + ML/clustering/survival (→
+duckdb-ml) + inferential layer (→ stats_fill.sql). Every function has a home. The only
+`[APPROX]` items are Tukey/Dunnett p-values (DuckDB has no studentized-range CDF; z-approx,
+anti-conservative for small samples).
 
-## 快速开始
+## Quick start
 
-### Python（推荐）
+### Python (recommended)
 
 ```python
-# clone 本仓库后:
-import duckdb
+# after cloning this repo:
+import sys; sys.path.insert(0, '<path-to-repo>')
 from duckdb_stats_setup import stats_connect
 
-con = stats_connect()   # 自动: 装 stats_duck → LOAD → 加载 65 宏
+con = stats_connect()   # auto: INSTALL stats_duck -> LOAD -> load 64 macros
 con.execute("CREATE TABLE t AS SELECT i::BIGINT id, 100 + 10*(i%3) + random()*8 x, (i%3)::VARCHAR grp FROM range(90) r(i)")
 print(con.execute("SELECT ci_mean(array_agg(x ORDER BY id)) FROM t").fetchone())
+
+# optionally add the ML layer (path to a built duckdb-ml extension):
+con = stats_connect(ml_extension=r'/path/to/ml.duckdb_extension')
 ```
 
-### SQL CLI / 其他语言
+### SQL CLI / other languages
 
 ```sql
 INSTALL stats_duck FROM community;
 LOAD stats_duck;
--- 逐条执行 stats_fill.sql (CREATE OR REPLACE MACRO ...)
--- 之后:
-SELECT power_2samp(50, 0.5);              -- 功效
-SELECT fisher_exact_p(20,10,5,15);        -- Fisher 精确双侧
+-- execute stats_fill.sql (CREATE OR REPLACE MACRO ...)
+SELECT power_2samp(50, 0.5);              -- power
+SELECT fisher_exact_p(20,10,5,15);        -- exact Fisher, two-sided
 SELECT * FROM tukey_hsd((SELECT array_agg(x ORDER BY id) FROM t),
                         (SELECT array_agg(grp ORDER BY id) FROM t));
 ```
 
-完整函数签名与调用约定：**[`docs/FUNCTION_REFERENCE.md`](docs/FUNCTION_REFERENCE.md)**（65 个宏逐一列出）。
+Full signatures and calling conventions: **[`docs/FUNCTION_REFERENCE.md`](docs/FUNCTION_REFERENCE.md)**
+(all 64 macros listed).
 
-## 关键调用约定（踩坑总结）
+## Key calling conventions (hard-won)
 
-1. **list 是 1-indexed**：`SELECT l[i] ... FROM unnest(range(1, len(l)+1)) t(i)` 才取全。
-2. **多个 `array_agg` 独立聚合、顺序不保证** → 分组函数必须同一 `ORDER BY` 键：
-   `array_agg(x ORDER BY id)` / `array_agg(grp ORDER BY id)`。
-3. 分组（TABLE）宏的参数必须是**标量子查询**，不能是裸聚合，也不能 `SELECT * FROM m(...) FROM t`（双 FROM 非法）。
-4. `stats_duck` 的 `pf/pt/pchisq` 是 **CDF（下尾）**；上尾 p = `1 - pf(...)`。
-5. `tukey_hsd`/`dunnett_approx` 的 p 值标 `[APPROX]`（z 近似）。
+1. **DuckDB lists are 1-indexed**: `SELECT l[i] ... FROM unnest(range(1, len(l)+1)) t(i)` to get all n elements.
+2. **Multiple `array_agg` calls are independent aggregates — row order is NOT aligned.**
+   Grouped macros must share one `ORDER BY` key: `array_agg(x ORDER BY id)` /
+   `array_agg(grp ORDER BY id)`.
+3. Table-macro arguments must be **scalar subqueries** — no bare aggregate, no
+   `SELECT * FROM m(...) FROM t` (double FROM is illegal).
+4. `stats_duck`'s `pf/pt/pchisq` are **CDFs (lower tail)**; upper-tail p = `1 - pf(...)`.
+5. `tukey_hsd` / `dunnett_approx` p-values are marked `[APPROX]` (z-approximation).
 
-## 验证
+## Verification
 
 ```bash
 cd tests
 uv venv .venv && uv pip install -p .venv duckdb scipy numpy
-.venv/bin/python gen_refs.py      # 生成参照值(固定种子)
-.venv/bin/python verify_fill.py   # 64 宏加载 + 58 项断言 vs scipy 1.18 → TOTAL FAILS: 0
+.venv/bin/python gen_refs.py      # generate reference values (fixed seeds)
+.venv/bin/python verify_fill.py   # loads all 64 macros + 58 assertions vs scipy 1.18 -> TOTAL FAILS: 0
 ```
 
-（Windows: `.venv\Scripts\python ...`；`verify_fill.py` 用临时 DUCKDB_HOME，不污染真实 `~/.duckdb`。）
+(Windows: `.venv\Scripts\python ...`. `verify_fill.py` uses a temporary DUCKDB_HOME and does
+not touch your real `~/.duckdb`.)
 
-## 文件
+## Files
 
 ```
-stats_fill.sql           64 个统计宏 (A 描述 B 置信区间 C 功效 D 检验 E ANOVA F 效应量 G 分类 H 时序 I 特殊函数 J 加权/集中度)
-duckdb_stats_setup.py    stats_connect() 一键启动器
-docs/FUNCTION_REFERENCE.md   64 宏签名参考
-docs/statcpp_vs_duckdb.csv   30 模块覆盖矩阵
-tests/                     scipy 验证 (gen_refs + verify_fill + refs.json)
+stats_fill.sql             64 statistics macros (A descriptive, B CIs, C power, D tests,
+                           E ANOVA/post-hoc, F effect sizes, G categorical, H time series,
+                           I special functions, J weighted + concentration)
+duckdb_stats_setup.py      stats_connect() one-line bootstrap
+docs/FUNCTION_REFERENCE.md 64 macro signatures
+docs/statcpp_vs_duckdb.csv 30-module coverage matrix
+tests/                     scipy verification (gen_refs + verify_fill + refs.json)
 ```
 
-## 为什么是"插件 + 宏"而不是自研 Rust 扩展
+## Why "plug-ins + macros" instead of a custom Rust extension
 
-- **Lua 路线**（实测否决）：有状态聚合建不出（`must return a function`）、标量慢 ~7×。
-- **自研 Rust 包装 statcpp**：只有当产品要求"单一闭源依赖 / 386 函数逐项对齐"才值得；
-  且优先包 `special_functions.hpp`（erf 系列已有宏覆盖）与 GLM 推断层。
-- 本仓库方案：装一个社区插件 + 一份 SQL 文件，零编译、跨平台、随 `DuckDB >= 1.4`。
+- **Lua route** (rejected, measured): stateful aggregates cannot be built
+  (`must return a function`); scalars ~7× slower than builtins.
+- **Custom Rust wrapper around statcpp**: only worth it when the product demands a single
+  closed dependency / exact 386-function parity — then wrap `special_functions.hpp` and the
+  GLM inference layer first.
+- This repo: one community extension + one SQL file — zero compilation, cross-platform,
+  works on DuckDB >= 1.4.
 
 ## License
 
