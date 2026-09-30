@@ -1,0 +1,31 @@
+﻿statcpp 模块,状态,已有覆盖(core+stats_duck+duckdb-ml),缺失,补法
+1 描述统计,基本覆盖,core: sum/count/avg/median/mode/variance/stddev/var_pop/stddev_pop,"geometric_mean, harmonic_mean, trimmed_mean, weighted_mean, logarithmic_mean, argmin/argmax, weighted_harmonic",SQL 宏(半天): exp(avg(ln x)) / 1/avg(1/x) / quantile 截尾 / weighted_avg 已有 / argmin=window
+2 离散度,基本覆盖,"core: variance/stddev/pop/sample 变体, mad","iqr, coefficient_of_variation, mean_absolute_deviation, weighted_var/stddev, geometric_stddev",SQL 宏: quantile(0.75)-quantile(0.25) / std/abs(avg) / avg(abs(x-avg)) 需窗口
+3 顺序统计,基本覆盖,"core: min/max/quantile(x,p)/quantile_cont/median","weighted_median, weighted_percentile(quantile_weighted 不在 core), five_number_summary",加权分位=宏或 list 聚合; 五数概括=宏组合
+4 分布形态,覆盖,core: skewness/kurtosis(含 pop/sample 变体),
+5 相关/协方差,基本覆盖,"core: corr/covar_samp/covar_pop, stats_duck: pearson_test/spearman_test/kendall_test/corr_matrix",weighted_covariance(频率权重修正),"SQL 宏或 Rust(低频,缓)"
+6 频数分布,SQL 原生,GROUP BY + count/比例/累计窗口,frequency_table/relative_frequency/cumulative 形式化函数,"SQL 即可,不必包"
+7 特殊函数,部分缺失,core: gamma/lgamma; stats_duck: pgamma/qgamma 等间接覆盖,"erf/erfc, betainc/betaincinv, gammainc_lower/upper(+inv), norm_sf(尾概率精度), norm_cdf/quantile 标量",stats_duck 已有 pnorm/qnorm; erf 等=小 Rust 扩展包 statcpp::special_functions(5 个函数)
+8 随机引擎,覆盖,"core: set_seed/rnd, stats_duck: rnorm/rpois/... 全 r* 族",
+9 连续分布,覆盖(除 1 族),stats_duck d/p/q/r 四件套: normal/t/chisq/f/gamma/beta/exp/weibull/lognormal/uniform,studentized_range cdf/quantile (Tukey HSD 的 p 值用),Rust 扩展(1 族)或正态近似宏
+10 离散分布,覆盖,stats_duck: pois/nbinom/hyper/binom 四件套; bernoulli=binomial(n=1) 退化,discrete_uniform 独立函数,SQL: (a+(b-a+1)*rnd)::INT
+11 置信区间/估计,整块缺失,无,"ci_mean/z, ci_proportion(wald/wilson), ci_variance, ci_mean_diff(3 种), ci_proportion_diff, margin_of_error(3), sample_size_for_moe(2) 共16个","全=标量数学,SQL 宏可写(qt/pt/qnorm 都有),1 个 .sql 文件"
+12 参数检验,基本覆盖,"stats_duck: ttest_1samp/2samp/paired, chisq_gof/independence, adjust_p(bonferroni/holm/hochberg/fdr/BY 实测 OK)","z_test/z_test_proportion(±2-sample), f_test(方差齐性)",SQL 宏: 统计量手算+p 值=pf/pt(半天)
+13 非参数检验,覆盖(anofox 加载故障待修),stats_duck: shapiro_wilk/anderson_darling/jarque_bera/ks_1samp/2samp/mann_whitney_u/wilcoxon_signed_rank/sign_test,"lilliefors, levene, bartlett, kruskal_wallis, fisher_exact  ← anofox_statistics 全有,但本机 LOAD 报 'Cannot AlterEntry without client context'(疑该扩展与 1.5.5 不兼容)","先修 anofox 加载;修不好=SQL 宏(KW/Levene 半天,Fisher 需 betainc→依赖 #7)"
+14 效应量,整块缺失,无(duckdb-ml 无),"cohens_d(±2samp), hedges_g(±2samp), glass_delta, t/d/r 互转, eta²/partial η²/ω², cohens_h, odds_ratio, risk_ratio, interpret_* 共18个","全=标量数学,SQL 宏 1 个文件; 这是与 R 对标最常被问的层"
+15 重抽样,部分,"stats_duck: bootstrap(aggregate, 实测在列)","permutation_test(2-sample/paired/correlation), bootstrap_bca","permutation=表函数级计算,Rust 或 Python 侧; 低频"
+16 功效分析/样本量,整块缺失,无,"power_t_test(1/2samp), sample_size_t_test(1/2samp), power/sample_size_prop 共8个","SQL 宏(非中心 t 近似=正态近似即可,statcpp 自己也这么做的)"
+17 线性回归,部分,stats_duck: lm/lm_fit/lm_summary(HC/cluster-robust SE); duckdb-ml: linear/ridge/lasso/elastic_net/poly/robust,"prediction_interval, VIF, PRESS, CV/LOOCV, multicollinearity_score",VIF=corr_matrix 行列式宏; PI=宏; CV 低频缓做
+18 ANOVA/事后,部分缺失,stats_duck: anova_oneway(实测 OK),"two_way_anova, tukey_hsd(依赖 #9 studentized_range), dunnett, scheffe, bonferroni_posthoc, one_way_ancova, cohens_f",two-way=SQL 平方和分解(半天); Tukey=正态近似宏或 Rust; ANCOVA=lm+协变量
+19 GLM,训练有/推断缺,duckdb-ml: logistic/multinomial/ordinal 训练+预测(源码确认),GLM 推断层: SE/z/p/AIC/ICR、odds_ratios_ci、过离散检验、Poisson 回归、伪 R²,"Rust 扩展包 statcpp::glm(或缓做,ML 场景用 duckdb-ml 够)"
+20 模型选择,部分,duckdb-ml: ridge/lasso/elastic_net/cv 相关,"aic/aicc/bic 标量形式, press_statistic, loocv 独立函数",SQL 宏: AIC=k-2lnL 两行
+21 距离度量,基本覆盖,"core: array_cosine_distance/similarity, list_cosine_*","euclidean/manhattan/minkowski/chebyshev(数组形式), mahalanobis",欧氏/曼哈顿=SQL 数组展开; mahalanobis 需矩阵求逆→Rust 或缓
+22 数值工具,"内部函数,无需包",log1p/expm1/safe_divide 等≈内部 helper,—,跳过
+23 多元分析,大部分覆盖,duckdb-ml: pca/lda; stats_duck: corr_matrix,"mahalanobis_distance, covariance_matrix 独立函数, power_iteration",cov_matrix=SQL 宏; mahalanobis 同 #21
+24 时间序列,大部分缺失(ML 部分除外),duckdb-ml: arima 训练+预测(源码确认),"acf/pacf, mae/mse/rmse/mape, moving_average/EMA(窗口), diff/seasonal_diff/lag",acf=窗口函数宏(半天); diff/lag=LAG() 内置; MAE 族=宏
+25 分类变量分析,缺失,无,"contingency_table, odds_ratio(+CI), relative_risk(+CI), risk_difference(+CI), NNT",contingency=PIVOT 原生; OR/RR/NNT=SQL 宏(依赖 #7 的 CI 件)
+26 生存分析,大部分覆盖,"duckdb-ml: kaplan_meier/ml_km_train, cox/ml_cox_train(源码确认)","logrank_test(源码未暴露), nelson_aalen, median_survival_time",duckdb-ml 仅暴露 km_train/cox_train; Nelson-Aalen=窗口宏; logrank 需新写
+27 稳健统计,部分,core: mad(实测在列),"mad_scaled, winsorize, cooks_distance, dffits, hodges_lehmann, biweight_midvariance, detect_outliers_*",MAD 缩放/IQR 离群=宏; cooks/dffits 依赖回归杠杆→缓
+28 聚类,覆盖(超出 statcpp),duckdb-ml: kmeans/dbscan/agglomerative/fuzzy_cmeans/tsne(源码确认),"silhouette_score, kmeans++ init 细节",silhouette=SQL 宏(可选)
+29 数据操作,"SQL 原生,无需包","fillna=COALESCE/窗口, group_*=GROUP BY, rolling_*=窗口, bin_*=宏, one_hot=UNPIVOT","boxcox, label_encode 形式化函数",SQL 已够; boxcox=宏
+30 高级缺失数据,整块缺失,无,"MCAR 检验, PMM/bootstrap 多重插补, 模式混合敏感性分析, tipping_point 共12个","重度: MCAR 检验=卡方宏可做; PMI=研究级,建议不做(超出 SQL 扩展合理边界)"

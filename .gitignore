@@ -1,0 +1,4 @@
+.venv/
+tests/.duckdb_test_home/
+__pycache__/
+*.pyc
