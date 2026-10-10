@@ -1,0 +1,9 @@
+{
+  "name": "duckdb-stats",
+  "version": "0.1.0",
+  "description": "Verified knowledge for duckdb-stats: the stats_fill.sql 64-macro layer over stats_duck, scipy-verified (58 assertions). Two skills: quickstart & calling conventions, and the full 64-macro catalog by category.",
+  "author": {
+    "name": "alitrack"
+  },
+  "homepage": "https://github.com/alitrack/duckdb_stats"
+}

@@ -1,0 +1,15 @@
+{
+  "name": "duckdb-stats",
+  "owner": {
+    "name": "alitrack",
+    "url": "https://github.com/alitrack"
+  },
+  "plugins": [
+    {
+      "name": "duckdb-stats",
+      "description": "Verified SQL knowledge for duckdb-stats: R/SciPy-level statistics in DuckDB via stats_duck + 64 SQL macros — CIs, effect sizes, power/sample size, ANOVA + post-hoc, categorical, weighted stats, ACF",
+      "source": "./duckdb-stats",
+      "category": "data"
+    }
+  ]
+}
