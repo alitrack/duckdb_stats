@@ -37,10 +37,10 @@ CREATE OR REPLACE MACRO stat_pctl(l, p) AS (
 CREATE OR REPLACE MACRO stat_median(l) AS stat_pctl(l, 0.5);
 
 CREATE OR REPLACE MACRO stat_geometric_mean(l) AS
-  exp(list_sum(list_transform(l, v -> ln(v))) / len(l));
+  exp(list_sum(list_transform(l, lambda v: ln(v))) / len(l));
 
 CREATE OR REPLACE MACRO stat_harmonic_mean(l) AS
-  len(l) / list_sum(list_transform(l, v -> 1.0 / v));
+  len(l) / list_sum(list_transform(l, lambda v: 1.0 / v));
 
 CREATE OR REPLACE MACRO stat_cv(l) AS list_stddev_samp(l) / list_avg(l);
 
@@ -223,7 +223,7 @@ CREATE OR REPLACE MACRO kruskal_wallis(xl, gl) AS TABLE
   SELECT 12.0 * hs.s / (tot.n_all*(tot.n_all+1)) AS h_statistic,
          hs.k - 1 AS df,
          1 - pchisq(12.0 * hs.s / (tot.n_all*(tot.n_all+1)), hs.k - 1) AS p_value
-  FROM hs CROSS JOIN tot
+  FROM hs CROSS JOIN tot;
 
 -- ============ E. ANOVA 与事后检验 ============
 
@@ -241,7 +241,7 @@ CREATE OR REPLACE MACRO oneway_anova(xl, gl) AS TABLE
          1 - pf((sst.ssb/(sst.k-1))/(sst.ssw/(grand.n_all - sst.k)), sst.k-1, grand.n_all - sst.k) AS p_value,
          sst.ssb/(sst.ssb+sst.ssw) AS eta_squared,
          sqrt(sst.ssb/(sst.ssb+sst.ssw) / (1 - sst.ssb/(sst.ssb+sst.ssw))) AS cohen_f
-  FROM sst CROSS JOIN grand
+  FROM sst CROSS JOIN grand;
 
 -- 两因素 ANOVA (xl 值, al a因素, bl b因素; 交叉设计)
 CREATE OR REPLACE MACRO twoway_anova(xl, al, bl) AS TABLE
@@ -269,7 +269,7 @@ CREATE OR REPLACE MACRO twoway_anova(xl, al, bl) AS TABLE
          f.fa AS f_a, 1 - pf(f.fa, dim.k-1, dim.ng - dim.k*dim.j) AS p_a,
          f.fb AS f_b, 1 - pf(f.fb, dim.j-1, dim.ng - dim.k*dim.j) AS p_b,
          f.fab AS f_ab, 1 - pf(f.fab, (dim.k-1)*(dim.j-1), dim.ng - dim.k*dim.j) AS p_ab
-  FROM ssa CROSS JOIN ssb CROSS JOIN ssab CROSS JOIN sse CROSS JOIN dim CROSS JOIN f
+  FROM ssa CROSS JOIN ssb CROSS JOIN ssab CROSS JOIN sse CROSS JOIN dim CROSS JOIN f;
 
 -- Tukey HSD (TABLE 宏; 返回所有组对). q 统计量精确, p 为 z 近似 [APPROX]
 CREATE OR REPLACE MACRO tukey_hsd(xl, gl, alpha := 0.05) AS TABLE
@@ -287,7 +287,7 @@ CREATE OR REPLACE MACRO tukey_hsd(xl, gl, alpha := 0.05) AS TABLE
          abs(g1.g_mean - g2.g_mean) > 1.96*sqrt(mse.mse/2.0*(1.0/g1.n + 1.0/g2.n))
            AS significant_z95
   FROM gm g1, gm g2, mse
-  WHERE g1.grp < g2.grp
+  WHERE g1.grp < g2.grp;
 
 -- Scheffé 事后 (单值; mean_diff/n1/n2/组数k/df_error/mse)
 CREATE OR REPLACE MACRO scheffe_p(mean_diff, n1, n2, k, df_error, mse) AS (
@@ -305,7 +305,7 @@ CREATE OR REPLACE MACRO dunnett_approx(diffs, se_each, alpha := 0.05) AS TABLE
          2*(1-pnorm(abs(diff/se))) AS p_unadjusted,
          2*(1-pnorm(abs(diff/se)))/len(diffs) AS p_bonferroni,
          2*(1-pnorm(abs(diff/se))) < alpha/len(diffs) AS significant
-  FROM d
+  FROM d;
 
 -- ============ F. 效应量 ============
 
@@ -397,25 +397,25 @@ CREATE OR REPLACE MACRO fisher_exact_p(a, b, c, d) AS (
 
 CREATE OR REPLACE MACRO acf(x, lag) AS (
   WITH z AS (SELECT list_avg(x) AS m, len(x) AS n)
-  SELECT list_sum(list_transform(range(1, z.n - lag + 1), i -> (x[i]-z.m)*(x[i+lag]-z.m)))
-         / list_sum(list_transform(x, v -> pow(v - z.m, 2)))
+  SELECT list_sum(list_transform(range(1, z.n - lag + 1), lambda i: ((x[i]-z.m)*(x[i+lag]-z.m))))
+         / list_sum(list_transform(x, lambda v: pow(v - z.m, 2)))
   FROM z
 );
 
 -- 严格 PACF 需 Durbin-Levinson 递推(要迭代), SQL 宏做不了; 提供 ACF 向量
 CREATE OR REPLACE MACRO acf_vector(x, max_lag) AS TABLE
-  SELECT k AS lag, acf(x, k) AS r FROM unnest(range(1, max_lag)) u(k)
+  SELECT k AS lag, acf(x, k) AS r FROM unnest(range(1, max_lag)) u(k);
 
 CREATE OR REPLACE MACRO mae(actual, pred) AS
-  list_avg(list_transform(actual, (v, i) -> abs(v - pred[i])));
+  list_avg(list_transform(actual, lambda v, i: abs(v - pred[i])));
 
 CREATE OR REPLACE MACRO mse(actual, pred) AS
-  list_avg(list_transform(actual, (v, i) -> pow(v - pred[i], 2)));
+  list_avg(list_transform(actual, lambda v, i: pow(v - pred[i], 2)));
 
 CREATE OR REPLACE MACRO rmse(actual, pred) AS sqrt(mse(actual, pred));
 
 CREATE OR REPLACE MACRO mape(actual, pred) AS
-  list_avg(list_transform(actual, (v, i) -> abs((v - pred[i]) / v))) * 100.0;
+  list_avg(list_transform(actual, lambda v, i: abs((v - pred[i]) / v))) * 100.0;
 
 -- ============ I. 特殊函数 (statcpp special_functions 里 core/stats_duck 没有的) ============
 

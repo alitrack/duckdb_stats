@@ -62,6 +62,7 @@ SELECT * FROM tukey_hsd((SELECT array_agg(x ORDER BY id) FROM t),
 
 Full signatures and calling conventions: **[`docs/FUNCTION_REFERENCE.md`](docs/FUNCTION_REFERENCE.md)**
 (all 64 macros listed).
+NULL / NaN / Inf behavior per macro (measured, not assumed): **[`docs/NULL_CONTRACTS.md`](docs/NULL_CONTRACTS.md)**
 
 ## Key calling conventions (hard-won)
 
